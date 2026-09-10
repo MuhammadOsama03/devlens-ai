@@ -1,4 +1,4 @@
-from app.analysis import analyze_root
+from app.analysis import analyze_root, calculate_health
 
 
 def test_analyze_root_detects_framework_and_quality_signals():
@@ -32,3 +32,26 @@ def test_analyze_root_handles_empty_repository():
         "framework_signals": [],
         "quality_signals": [],
     }
+
+
+def test_calculate_health_scores_detected_signals():
+    result = calculate_health(["documentation", "tests", "github_automation"])
+
+    assert result["score"] == 70
+    assert result["grade"] == "B"
+    assert len(result["recommendations"]) == 2
+
+
+def test_calculate_health_returns_full_score_without_recommendations():
+    result = calculate_health(
+        ["documentation", "license", "github_automation", "tests", "containerization"]
+    )
+
+    assert result == {"score": 100, "grade": "A", "recommendations": []}
+
+
+def test_calculate_health_ignores_unknown_signals():
+    result = calculate_health(["unknown"])
+
+    assert result["score"] == 0
+    assert result["grade"] == "F"
