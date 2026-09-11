@@ -1,3 +1,4 @@
+from pathlib import PurePosixPath
 from typing import Any
 
 
@@ -62,6 +63,41 @@ def analyze_root(entries: list[dict[str, Any]]) -> dict[str, Any]:
         "directory_count": len(directories),
         "files": files,
         "directories": directories,
+        "framework_signals": frameworks,
+        "quality_signals": quality,
+    }
+
+
+def analyze_paths(paths: list[str]) -> dict[str, Any]:
+    normalized = [PurePosixPath(path) for path in paths if path and not path.endswith("/")]
+    filenames = {path.name for path in normalized}
+    path_parts = {part for path in normalized for part in path.parts}
+    directories = {
+        str(parent)
+        for path in normalized
+        for parent in path.parents
+        if str(parent) != "."
+    }
+
+    frameworks = sorted(
+        {
+            label
+            for filename, label in FRAMEWORK_SIGNALS.items()
+            if filename in filenames
+        }
+    )
+    quality = sorted(
+        {
+            label
+            for signal_name, label in QUALITY_SIGNALS.items()
+            if signal_name in filenames or signal_name in path_parts
+        }
+    )
+
+    return {
+        "file_count": len(normalized),
+        "directory_count": len(directories),
+        "max_depth": max((len(path.parts) for path in normalized), default=0),
         "framework_signals": frameworks,
         "quality_signals": quality,
     }
