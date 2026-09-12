@@ -1,16 +1,18 @@
 import asyncio
 from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, Path
+from fastapi import FastAPI, HTTPException, Path, Query
 
-from .analysis import analyze_root, calculate_health
+from .analysis import analyze_paths, analyze_root, calculate_health
 from .github_client import (
     GitHubRepositoryError,
     get_languages,
     get_repository,
+    get_repository_paths,
     get_root_contents,
 )
 from .models import (
+    DeepStructureAnalysis,
     HealthResponse,
     RepositoryOverview,
     RepositorySummary,
@@ -20,7 +22,7 @@ from .models import (
 
 app = FastAPI(
     title="DevLens Analyzer API",
-    version="0.3.1",
+    version="0.4.0",
     description="Repository intelligence service for DevLens AI.",
 )
 
@@ -62,6 +64,32 @@ async def repository_structure(owner: RepoSegment, repo: RepoSegment) -> dict:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     return {"repository": f"{owner}/{repo}", **analyze_root(entries)}
+
+
+@app.get(
+    "/repositories/{owner}/{repo}/deep-structure",
+    response_model=DeepStructureAnalysis,
+)
+async def repository_deep_structure(
+    owner: RepoSegment,
+    repo: RepoSegment,
+    ref: str | None = Query(default=None, min_length=1, max_length=255),
+) -> dict:
+    try:
+        resolved_ref = ref
+        if resolved_ref is None:
+            repository = await get_repository(owner, repo)
+            resolved_ref = repository.get("default_branch") or "main"
+        paths, truncated = await get_repository_paths(owner, repo, resolved_ref)
+    except GitHubRepositoryError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    return {
+        "repository": f"{owner}/{repo}",
+        "ref": resolved_ref,
+        **analyze_paths(paths),
+        "truncated": truncated,
+    }
 
 
 @app.get(
