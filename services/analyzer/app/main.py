@@ -1,4 +1,5 @@
 import asyncio
+from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Path
 
@@ -19,12 +20,14 @@ from .models import (
 
 app = FastAPI(
     title="DevLens Analyzer API",
-    version="0.3.0",
+    version="0.3.1",
     description="Repository intelligence service for DevLens AI.",
 )
 
-
-repo_segment = Path(min_length=1, max_length=100, pattern=r"^[A-Za-z0-9_.-]+$")
+RepoSegment = Annotated[
+    str,
+    Path(min_length=1, max_length=100, pattern=r"^[A-Za-z0-9_.-]+$"),
+]
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -36,10 +39,7 @@ def health() -> dict[str, str]:
     "/repositories/{owner}/{repo}/summary",
     response_model=RepositorySummary,
 )
-async def repository_summary(
-    owner: str = repo_segment,
-    repo: str = repo_segment,
-) -> dict:
+async def repository_summary(owner: RepoSegment, repo: RepoSegment) -> dict:
     try:
         repository, languages = await asyncio.gather(
             get_repository(owner, repo),
@@ -55,10 +55,7 @@ async def repository_summary(
     "/repositories/{owner}/{repo}/structure",
     response_model=StructureAnalysis,
 )
-async def repository_structure(
-    owner: str = repo_segment,
-    repo: str = repo_segment,
-) -> dict:
+async def repository_structure(owner: RepoSegment, repo: RepoSegment) -> dict:
     try:
         entries = await get_root_contents(owner, repo)
     except GitHubRepositoryError as exc:
@@ -71,10 +68,7 @@ async def repository_structure(
     "/repositories/{owner}/{repo}/overview",
     response_model=RepositoryOverview,
 )
-async def repository_overview(
-    owner: str = repo_segment,
-    repo: str = repo_segment,
-) -> dict:
+async def repository_overview(owner: RepoSegment, repo: RepoSegment) -> dict:
     try:
         repository, languages, entries = await asyncio.gather(
             get_repository(owner, repo),
