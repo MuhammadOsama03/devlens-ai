@@ -1,4 +1,5 @@
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -50,3 +51,22 @@ async def get_root_contents(owner: str, repo: str) -> list[dict[str, Any]]:
     if not isinstance(result, list):
         raise GitHubRepositoryError("Repository root is not a directory")
     return result
+
+
+async def get_repository_paths(
+    owner: str,
+    repo: str,
+    ref: str,
+) -> tuple[list[str], bool]:
+    encoded_ref = quote(ref, safe="")
+    result = await _get(f"repos/{owner}/{repo}/git/trees/{encoded_ref}?recursive=1")
+    tree = result.get("tree")
+    if not isinstance(tree, list):
+        raise GitHubRepositoryError("GitHub returned an invalid repository tree")
+
+    paths = [
+        item["path"]
+        for item in tree
+        if item.get("type") == "blob" and isinstance(item.get("path"), str)
+    ]
+    return paths, bool(result.get("truncated", False))
