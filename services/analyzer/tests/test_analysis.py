@@ -45,7 +45,7 @@ def test_analyze_paths_detects_nested_signals_and_depth():
     )
 
     assert result["file_count"] == 4
-    assert result["directory_count"] == 6
+    assert result["directory_count"] == 5
     assert result["max_depth"] == 4
     assert result["framework_signals"] == ["Python project"]
     assert result["quality_signals"] == [

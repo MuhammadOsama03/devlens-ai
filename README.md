@@ -4,7 +4,7 @@ AI-powered GitHub repository intelligence for codebase analysis, engineering hea
 
 ## Initial scope
 
-DevLens starts with deterministic repository analysis before adding AI-assisted explanations. The first milestone covers repository metadata, language/framework detection, structure signals, engineering-health scoring, and a clean API for the web client.
+DevLens starts with deterministic repository analysis before adding AI-assisted explanations. The analyzer covers repository metadata, language/framework detection, root and recursive structure signals, engineering-health scoring, and typed API responses.
 
 ## Architecture
 
@@ -31,7 +31,14 @@ Then open `http://localhost:8000/docs`.
 - `GET /health` — service status and version
 - `GET /repositories/{owner}/{repo}/summary` — metadata and language percentages
 - `GET /repositories/{owner}/{repo}/structure` — root files, directories, and detected signals
-- `GET /repositories/{owner}/{repo}/overview` — combined summary, structure, health score, and recommendations
+- `GET /repositories/{owner}/{repo}/deep-structure` — repository-wide file, directory, depth, framework, and quality signals
+- `GET /repositories/{owner}/{repo}/overview` — combined summary, root structure, health score, and recommendations
+
+The deep-structure endpoint accepts an optional `ref` query parameter for a branch, tag, or commit:
+
+```text
+/repositories/openai/openai-python/deep-structure?ref=main
+```
 
 Unauthenticated requests work for public repositories but are subject to GitHub's lower rate limit. Set `GITHUB_TOKEN` to analyze private repositories or receive a higher rate limit.
 
@@ -39,8 +46,19 @@ Unauthenticated requests work for public repositories but are subject to GitHub'
 
 ```bash
 cd services/analyzer
-pytest
+python -m pytest
 ```
+
+## Docker
+
+Build and run the analyzer from the repository root:
+
+```bash
+docker build -t devlens-analyzer services/analyzer
+docker run --rm -p 8000:8000 -e GITHUB_TOKEN devlens-analyzer
+```
+
+The container runs as a non-root user and includes a health check against `/health`.
 
 ## Roadmap
 
@@ -53,4 +71,4 @@ pytest
 
 ## Status
 
-The analyzer foundation is operational. The web client is the next milestone.
+Analyzer API v0.4 provides typed root and recursive repository analysis. The web client is the next milestone.
