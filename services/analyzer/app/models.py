@@ -30,6 +30,17 @@ class StructureAnalysis(BaseModel):
     quality_signals: list[str]
 
 
+class DeepStructureAnalysis(BaseModel):
+    repository: str
+    ref: str
+    file_count: int
+    directory_count: int
+    max_depth: int
+    framework_signals: list[str]
+    quality_signals: list[str]
+    truncated: bool
+
+
 class EngineeringHealth(BaseModel):
     score: int = Field(ge=0, le=100)
     grade: str
