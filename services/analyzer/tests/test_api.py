@@ -13,7 +13,7 @@ def test_health_endpoint():
     assert response.json() == {
         "status": "ok",
         "service": "devlens-analyzer",
-        "version": "0.3.0",
+        "version": "0.4.0",
     }
 
 
@@ -51,6 +51,38 @@ def test_repository_overview(monkeypatch):
     assert payload["summary"]["languages"] == {"Python": 75.0, "HTML": 25.0}
     assert payload["structure"]["repository"] == "example/project"
     assert payload["engineering_health"]["score"] == 50
+
+
+def test_deep_structure_uses_requested_ref(monkeypatch):
+    async def fake_paths(
+        owner: str,
+        repo: str,
+        ref: str,
+    ) -> tuple[list[str], bool]:
+        assert (owner, repo, ref) == ("example", "project", "feature/api")
+        return (
+            [
+                "README.md",
+                ".github/workflows/ci.yml",
+                "services/api/requirements.txt",
+                "services/api/tests/test_api.py",
+            ],
+            False,
+        )
+
+    monkeypatch.setattr(main_module, "get_repository_paths", fake_paths)
+
+    response = client.get(
+        "/repositories/example/project/deep-structure",
+        params={"ref": "feature/api"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ref"] == "feature/api"
+    assert payload["file_count"] == 4
+    assert payload["max_depth"] == 4
+    assert payload["truncated"] is False
 
 
 def test_repository_name_validation():
