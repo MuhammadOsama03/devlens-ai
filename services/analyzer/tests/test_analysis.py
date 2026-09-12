@@ -1,4 +1,4 @@
-from app.analysis import analyze_root, calculate_health
+from app.analysis import analyze_paths, analyze_root, calculate_health
 
 
 def test_analyze_root_detects_framework_and_quality_signals():
@@ -29,6 +29,37 @@ def test_analyze_root_handles_empty_repository():
         "directory_count": 0,
         "files": [],
         "directories": [],
+        "framework_signals": [],
+        "quality_signals": [],
+    }
+
+
+def test_analyze_paths_detects_nested_signals_and_depth():
+    result = analyze_paths(
+        [
+            "README.md",
+            ".github/workflows/ci.yml",
+            "services/api/requirements.txt",
+            "services/api/tests/test_health.py",
+        ]
+    )
+
+    assert result["file_count"] == 4
+    assert result["directory_count"] == 6
+    assert result["max_depth"] == 4
+    assert result["framework_signals"] == ["Python project"]
+    assert result["quality_signals"] == [
+        "documentation",
+        "github_automation",
+        "tests",
+    ]
+
+
+def test_analyze_paths_handles_empty_input():
+    assert analyze_paths([]) == {
+        "file_count": 0,
+        "directory_count": 0,
+        "max_depth": 0,
         "framework_signals": [],
         "quality_signals": [],
     }
