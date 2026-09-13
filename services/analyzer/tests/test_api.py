@@ -13,7 +13,7 @@ def test_health_endpoint():
     assert response.json() == {
         "status": "ok",
         "service": "devlens-analyzer",
-        "version": "0.4.0",
+        "version": "0.5.0",
     }
 
 
@@ -87,5 +87,56 @@ def test_deep_structure_uses_requested_ref(monkeypatch):
 
 def test_repository_name_validation():
     response = client.get("/repositories/invalid owner/project/summary")
+
+    assert response.status_code == 422
+
+
+def test_repository_activity(monkeypatch):
+    async def fake_commits(
+        owner: str,
+        repo: str,
+        *,
+        ref: str | None,
+        limit: int,
+    ) -> list[dict]:
+        assert (owner, repo, ref, limit) == ("example", "project", "main", 10)
+        return [
+            {
+                "author": {"login": "alice"},
+                "commit": {"author": {"date": "2026-09-13T10:00:00Z"}},
+                "parents": [{"sha": "one"}],
+            },
+            {
+                "author": {"login": "bob"},
+                "commit": {"author": {"date": "2026-09-12T10:00:00Z"}},
+                "parents": [{"sha": "one"}, {"sha": "two"}],
+            },
+        ]
+
+    monkeypatch.setattr(main_module, "get_recent_commits", fake_commits)
+
+    response = client.get(
+        "/repositories/example/project/activity",
+        params={"ref": "main", "limit": 10},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "repository": "example/project",
+        "ref": "main",
+        "requested_limit": 10,
+        "commit_count": 2,
+        "unique_author_count": 2,
+        "merge_commit_count": 1,
+        "newest_commit_at": "2026-09-13T10:00:00Z",
+        "oldest_commit_at": "2026-09-12T10:00:00Z",
+    }
+
+
+def test_repository_activity_limit_validation():
+    response = client.get(
+        "/repositories/example/project/activity",
+        params={"limit": 101},
+    )
 
     assert response.status_code == 422
