@@ -1,5 +1,5 @@
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 import httpx
 
@@ -70,3 +70,20 @@ async def get_repository_paths(
         if item.get("type") == "blob" and isinstance(item.get("path"), str)
     ]
     return paths, bool(result.get("truncated", False))
+
+
+async def get_recent_commits(
+    owner: str,
+    repo: str,
+    *,
+    ref: str | None = None,
+    limit: int = 30,
+) -> list[dict[str, Any]]:
+    params: dict[str, str | int] = {"per_page": limit}
+    if ref:
+        params["sha"] = ref
+    query = urlencode(params)
+    result = await _get(f"repos/{owner}/{repo}/commits?{query}")
+    if not isinstance(result, list):
+        raise GitHubRepositoryError("GitHub returned an invalid commit list")
+    return result
