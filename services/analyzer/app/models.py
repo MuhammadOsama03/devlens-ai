@@ -52,3 +52,14 @@ class RepositoryOverview(BaseModel):
     summary: RepositorySummary
     structure: StructureAnalysis
     engineering_health: EngineeringHealth
+
+
+class CommitActivity(BaseModel):
+    repository: str
+    ref: str | None = None
+    requested_limit: int = Field(ge=1, le=100)
+    commit_count: int = Field(ge=0)
+    unique_author_count: int = Field(ge=0)
+    merge_commit_count: int = Field(ge=0)
+    newest_commit_at: str | None = None
+    oldest_commit_at: str | None = None
