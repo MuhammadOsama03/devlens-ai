@@ -130,3 +130,33 @@ def calculate_health(quality_signals: list[str]) -> dict[str, Any]:
         "grade": grade,
         "recommendations": recommendations,
     }
+
+
+def summarize_commit_activity(commits: list[dict[str, Any]]) -> dict[str, Any]:
+    authors: set[str] = set()
+    dates: list[str] = []
+    merge_commits = 0
+
+    for item in commits:
+        commit = item.get("commit") or {}
+        author = item.get("author") or {}
+        commit_author = commit.get("author") or {}
+        identity = author.get("login") or commit_author.get("email") or commit_author.get("name")
+        if identity:
+            authors.add(str(identity))
+
+        authored_at = commit_author.get("date")
+        if isinstance(authored_at, str):
+            dates.append(authored_at)
+
+        parents = item.get("parents") or []
+        if len(parents) > 1:
+            merge_commits += 1
+
+    return {
+        "commit_count": len(commits),
+        "unique_author_count": len(authors),
+        "merge_commit_count": merge_commits,
+        "newest_commit_at": max(dates, default=None),
+        "oldest_commit_at": min(dates, default=None),
+    }
