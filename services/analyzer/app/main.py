@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Path, Query
 
-from .analysis import analyze_paths, analyze_root, calculate_health
+from .analysis import (\n    analyze_paths,\n    analyze_root,\n    calculate_health,\n    summarize_commit_activity,\n)
 from .github_client import (
     GitHubRepositoryError,
     get_languages,
@@ -22,7 +22,7 @@ from .models import (
 
 app = FastAPI(
     title="DevLens Analyzer API",
-    version="0.4.0",
+    version="0.5.0",
     description="Repository intelligence service for DevLens AI.",
 )
 
