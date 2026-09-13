@@ -1,4 +1,4 @@
-from app.analysis import analyze_paths, analyze_root, calculate_health
+from app.analysis import (\n    analyze_paths,\n    analyze_root,\n    calculate_health,\n    summarize_commit_activity,\n)
 
 
 def test_analyze_root_detects_framework_and_quality_signals():
@@ -86,3 +86,43 @@ def test_calculate_health_ignores_unknown_signals():
 
     assert result["score"] == 0
     assert result["grade"] == "F"
+
+
+def test_summarize_commit_activity_counts_authors_and_merges():
+    commits = [
+        {
+            "author": {"login": "alice"},
+            "commit": {"author": {"date": "2026-09-13T10:00:00Z"}},
+            "parents": [{"sha": "one"}],
+        },
+        {
+            "author": {"login": "bob"},
+            "commit": {"author": {"date": "2026-09-12T09:00:00Z"}},
+            "parents": [{"sha": "one"}, {"sha": "two"}],
+        },
+        {
+            "author": {"login": "alice"},
+            "commit": {"author": {"date": "2026-09-11T08:00:00Z"}},
+            "parents": [{"sha": "one"}],
+        },
+    ]
+
+    result = summarize_commit_activity(commits)
+
+    assert result == {
+        "commit_count": 3,
+        "unique_author_count": 2,
+        "merge_commit_count": 1,
+        "newest_commit_at": "2026-09-13T10:00:00Z",
+        "oldest_commit_at": "2026-09-11T08:00:00Z",
+    }
+
+
+def test_summarize_commit_activity_handles_empty_history():
+    assert summarize_commit_activity([]) == {
+        "commit_count": 0,
+        "unique_author_count": 0,
+        "merge_commit_count": 0,
+        "newest_commit_at": None,
+        "oldest_commit_at": None,
+    }
