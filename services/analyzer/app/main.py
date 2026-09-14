@@ -3,7 +3,12 @@ from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Path, Query
 
-from .analysis import (\n    analyze_paths,\n    analyze_root,\n    calculate_health,\n    summarize_commit_activity,\n)
+from .analysis import (
+    analyze_paths,
+    analyze_root,
+    calculate_health,
+    summarize_commit_activity,
+)
 from .github_client import (
     GitHubRepositoryError,
     get_languages,

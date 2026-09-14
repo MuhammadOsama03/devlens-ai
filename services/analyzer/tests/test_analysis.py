@@ -1,4 +1,9 @@
-from app.analysis import (\n    analyze_paths,\n    analyze_root,\n    calculate_health,\n    summarize_commit_activity,\n)
+from app.analysis import (
+    analyze_paths,
+    analyze_root,
+    calculate_health,
+    summarize_commit_activity,
+)
 
 
 def test_analyze_root_detects_framework_and_quality_signals():
