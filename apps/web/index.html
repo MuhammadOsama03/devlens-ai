@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DevLens AI</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,system-ui,sans-serif;background:#07111f;color:#e6edf7}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at top,#17305a,#07111f 55%)}
+    main{max-width:900px;margin:auto;padding:72px 24px}.eyebrow{color:#71e6c1;font-weight:700;letter-spacing:.12em}
+    h1{font-size:clamp(2.7rem,8vw,5.5rem);line-height:.95;margin:.3em 0}.lead{font-size:1.15rem;color:#aebbd0;max-width:650px}
+    form{display:grid;grid-template-columns:1fr auto;gap:12px;margin:40px 0}input,button{border-radius:12px;padding:15px;font:inherit}
+    input{border:1px solid #304765;background:#0c1b30;color:white}button{border:0;background:#71e6c1;color:#07111f;font-weight:800;cursor:pointer}
+    .panel{border:1px solid #253b59;background:#0b182aCC;border-radius:18px;padding:24px;min-height:150px}
+    .error{color:#ff9a9a}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.metric{background:#11243d;padding:16px;border-radius:12px}
+    @media(max-width:600px){form{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">REPOSITORY INTELLIGENCE</div>
+  <h1>See the health behind the code.</h1>
+  <p class="lead">Enter a public GitHub repository to inspect its stack, structure, and engineering-health signals.</p>
+  <form id="analyze">
+    <input id="repository" required pattern="[^/]+/[^/]+" placeholder="owner/repository" aria-label="GitHub repository">
+    <button type="submit">Analyze</button>
+  </form>
+  <section id="result" class="panel" aria-live="polite">Ready to analyze a repository.</section>
+</main>
+<script>
+const form=document.querySelector("#analyze"),result=document.querySelector("#result");
+form.addEventListener("submit",async(event)=>{
+  event.preventDefault(); const repo=document.querySelector("#repository").value.trim();
+  result.textContent="Analyzing…";
+  try{
+    const response=await fetch(`${window.DEVLENS_API_URL||"http://localhost:8000"}/repositories/${encodeURI(repo)}/overview`);
+    if(!response.ok)throw new Error(`Request failed (${response.status})`);
+    const data=await response.json(),summary=data.summary,health=data.engineering_health;
+    result.innerHTML=`<h2>${summary.full_name}</h2><p>${summary.description||"No description provided."}</p>
+      <div class="grid"><div class="metric"><strong>${health.score}/100</strong><br>Health score</div>
+      <div class="metric"><strong>${summary.stars}</strong><br>Stars</div>
+      <div class="metric"><strong>${data.structure.file_count}</strong><br>Root files</div>
+      <div class="metric"><strong>${Object.keys(summary.languages).join(", ")||"Unknown"}</strong><br>Languages</div></div>`;
+  }catch(error){result.innerHTML=`<p class="error">${error.message}. Confirm the API is running and CORS is configured.</p>`;}
+});
+</script>
+</body>
+</html>
