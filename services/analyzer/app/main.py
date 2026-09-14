@@ -9,9 +9,11 @@ from .github_client import (
     get_languages,
     get_repository,
     get_repository_paths,
+    get_recent_commits,
     get_root_contents,
 )
 from .models import (
+    CommitActivity,
     DeepStructureAnalysis,
     HealthResponse,
     RepositoryOverview,
@@ -89,6 +91,29 @@ async def repository_deep_structure(
         "ref": resolved_ref,
         **analyze_paths(paths),
         "truncated": truncated,
+    }
+
+
+@app.get(
+    "/repositories/{owner}/{repo}/activity",
+    response_model=CommitActivity,
+)
+async def repository_activity(
+    owner: RepoSegment,
+    repo: RepoSegment,
+    ref: str | None = Query(default=None, min_length=1, max_length=255),
+    limit: int = Query(default=30, ge=1, le=100),
+) -> dict:
+    try:
+        commits = await get_recent_commits(owner, repo, ref=ref, limit=limit)
+    except GitHubRepositoryError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    return {
+        "repository": f"{owner}/{repo}",
+        "ref": ref,
+        "requested_limit": limit,
+        **summarize_commit_activity(commits),
     }
 
 
