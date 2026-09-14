@@ -1,0 +1,27 @@
+services:
+  analyzer:
+    build:
+      context: ./services/analyzer
+    environment:
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_API_URL: https://api.github.com
+      REQUEST_TIMEOUT_SECONDS: 10
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  web:
+    image: nginx:1.29-alpine
+    volumes:
+      - ./apps/web:/usr/share/nginx/html:ro
+    ports:
+      - "3000:80"
+    depends_on:
+      analyzer:
+        condition: service_healthy
+    restart: unless-stopped
