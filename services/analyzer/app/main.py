@@ -33,6 +33,17 @@ app = FastAPI(
     description="Repository intelligence service for DevLens AI.",
 )
 
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
 RepoSegment = Annotated[
     str,
     Path(min_length=1, max_length=100, pattern=r"^[A-Za-z0-9_.-]+$"),
