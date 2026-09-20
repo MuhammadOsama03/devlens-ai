@@ -18,3 +18,12 @@ def verify_api_key(api_key: str, expected_hash: str) -> bool:
     if not api_key or len(expected_hash) != 64:
         return False
     return hmac.compare_digest(hash_api_key(api_key), expected_hash.lower())
+
+
+def extract_bearer_token(authorization: str | None) -> str | None:
+    if not authorization:
+        return None
+    scheme, separator, token = authorization.partition(" ")
+    if not separator or scheme.lower() != "bearer" or not token.strip():
+        return None
+    return token.strip()
