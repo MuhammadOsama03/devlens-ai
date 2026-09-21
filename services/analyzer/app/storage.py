@@ -33,5 +33,22 @@ class AnalysisStore:
             ).fetchone()
         return json.loads(row[0]) if row else None
 
+    def list_repositories(self, limit: int = 100) -> list[str]:
+        if limit <= 0:
+            raise ValueError("limit must be positive")
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT repository FROM analyses ORDER BY updated_at DESC, repository LIMIT ?",
+                (limit,),
+            ).fetchall()
+        return [row[0] for row in rows]
+
+    def delete(self, repository: str) -> bool:
+        with self._connect() as connection:
+            cursor = connection.execute(
+                "DELETE FROM analyses WHERE repository = ?", (repository,)
+            )
+        return cursor.rowcount > 0
+
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self.database_path)
