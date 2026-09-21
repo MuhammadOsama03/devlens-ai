@@ -48,6 +48,11 @@ class TTLCache(Generic[T]):
         with self._lock:
             self._entries.clear()
 
+    def stats(self) -> dict[str, int]:
+        with self._lock:
+            self._remove_expired()
+            return {"entries": len(self._entries), "capacity": self.max_entries}
+
     def _remove_expired(self) -> None:
         now = monotonic()
         expired = [key for key, entry in self._entries.items() if entry.expires_at <= now]
