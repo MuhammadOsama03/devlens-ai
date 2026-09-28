@@ -1,7 +1,8 @@
 import asyncio
 from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, Path, Query
+from fastapi import FastAPI, Path, Query, Request
+from fastapi.responses import JSONResponse
 
 from .analysis import (
     analyze_paths,
@@ -34,6 +35,25 @@ app = FastAPI(
 )
 
 
+@app.exception_handler(GitHubRepositoryError)
+async def github_error_handler(
+    request: Request,
+    exc: GitHubRepositoryError,
+) -> JSONResponse:
+    error = exc.public_error
+    status_code = 404 if error.code == "repository_not_found" else 503 if error.retryable else 502
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "error": {
+                "code": error.code,
+                "message": error.message,
+                "retryable": error.retryable,
+            }
+        },
+    )
+
+
 @app.middleware("http")
 async def add_security_headers(request, call_next):
     response = await call_next(request)
@@ -60,13 +80,10 @@ def health() -> dict[str, str]:
     response_model=RepositorySummary,
 )
 async def repository_summary(owner: RepoSegment, repo: RepoSegment) -> dict:
-    try:
-        repository, languages = await asyncio.gather(
-            get_repository(owner, repo),
-            get_languages(owner, repo),
-        )
-    except GitHubRepositoryError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    repository, languages = await asyncio.gather(
+        get_repository(owner, repo),
+        get_languages(owner, repo),
+    )
 
     return _build_summary(repository, languages)
 
@@ -76,10 +93,7 @@ async def repository_summary(owner: RepoSegment, repo: RepoSegment) -> dict:
     response_model=StructureAnalysis,
 )
 async def repository_structure(owner: RepoSegment, repo: RepoSegment) -> dict:
-    try:
-        entries = await get_root_contents(owner, repo)
-    except GitHubRepositoryError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    entries = await get_root_contents(owner, repo)
 
     return {"repository": f"{owner}/{repo}", **analyze_root(entries)}
 
@@ -93,14 +107,11 @@ async def repository_deep_structure(
     repo: RepoSegment,
     ref: str | None = Query(default=None, min_length=1, max_length=255),
 ) -> dict:
-    try:
-        resolved_ref = ref
-        if resolved_ref is None:
-            repository = await get_repository(owner, repo)
-            resolved_ref = repository.get("default_branch") or "main"
-        paths, truncated = await get_repository_paths(owner, repo, resolved_ref)
-    except GitHubRepositoryError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    resolved_ref = ref
+    if resolved_ref is None:
+        repository = await get_repository(owner, repo)
+        resolved_ref = repository.get("default_branch") or "main"
+    paths, truncated = await get_repository_paths(owner, repo, resolved_ref)
 
     return {
         "repository": f"{owner}/{repo}",
@@ -120,10 +131,7 @@ async def repository_activity(
     ref: str | None = Query(default=None, min_length=1, max_length=255),
     limit: int = Query(default=30, ge=1, le=100),
 ) -> dict:
-    try:
-        commits = await get_recent_commits(owner, repo, ref=ref, limit=limit)
-    except GitHubRepositoryError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    commits = await get_recent_commits(owner, repo, ref=ref, limit=limit)
 
     return {
         "repository": f"{owner}/{repo}",
@@ -138,14 +146,11 @@ async def repository_activity(
     response_model=RepositoryOverview,
 )
 async def repository_overview(owner: RepoSegment, repo: RepoSegment) -> dict:
-    try:
-        repository, languages, entries = await asyncio.gather(
-            get_repository(owner, repo),
-            get_languages(owner, repo),
-            get_root_contents(owner, repo),
-        )
-    except GitHubRepositoryError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    repository, languages, entries = await asyncio.gather(
+        get_repository(owner, repo),
+        get_languages(owner, repo),
+        get_root_contents(owner, repo),
+    )
 
     root_analysis = analyze_root(entries)
     structure = {"repository": f"{owner}/{repo}", **root_analysis}

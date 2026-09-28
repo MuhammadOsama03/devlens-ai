@@ -140,3 +140,21 @@ def test_repository_activity_limit_validation():
     )
 
     assert response.status_code == 422
+
+
+def test_github_errors_have_stable_public_shape(monkeypatch):
+    async def unavailable(owner: str, repo: str) -> dict:
+        raise main_module.GitHubRepositoryError("private upstream detail", status_code=429)
+
+    monkeypatch.setattr(main_module, "get_repository", unavailable)
+
+    response = client.get("/repositories/example/project/summary")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "error": {
+            "code": "github_rate_limited",
+            "message": "GitHub rate limit was reached.",
+            "retryable": True,
+        }
+    }
