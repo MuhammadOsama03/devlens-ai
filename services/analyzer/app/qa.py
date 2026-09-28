@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from .redaction import redact_secrets
+
 
 MAX_QUESTION_LENGTH = 1000
 MAX_CONTEXT_LENGTH = 12000
@@ -10,6 +12,24 @@ class RepositoryQuestion:
     repository: str
     question: str
     context: str
+
+
+@dataclass(frozen=True)
+class ContextFile:
+    path: str
+    content: str
+
+
+def build_context_chunks(files: list[ContextFile]) -> list[str]:
+    chunks: list[str] = []
+    for file in files:
+        clean_path = file.path.replace("\x00", "").strip()
+        if not clean_path or not file.content.strip():
+            continue
+        chunks.append(
+            f"FILE: {clean_path}\n{redact_secrets(file.content.replace(chr(0), ''))}"
+        )
+    return chunks
 
 
 def prepare_repository_question(
