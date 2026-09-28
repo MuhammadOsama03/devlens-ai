@@ -26,6 +26,7 @@ from .models import (
     RepositorySummary,
     StructureAnalysis,
 )
+from .request_id import resolve_request_id
 
 
 app = FastAPI(
@@ -56,7 +57,10 @@ async def github_error_handler(
 
 @app.middleware("http")
 async def add_security_headers(request, call_next):
+    request_id = resolve_request_id(request.headers.get("X-Request-ID"))
+    request.state.request_id = request_id
     response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
