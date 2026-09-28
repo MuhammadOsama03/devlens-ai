@@ -1,4 +1,5 @@
 import asyncio
+import base64
 
 import pytest
 
@@ -76,3 +77,36 @@ def test_transport_error_is_retryable_without_leaking_details():
 
     assert error.public_error.code == "github_unavailable"
     assert "secret" not in error.public_error.message
+
+
+def test_get_text_file_decodes_github_content(monkeypatch):
+    async def fake_get(path: str):
+        assert path == "repos/example/project/contents/docs/guide.md?ref=feature%2Fdocs"
+        return {
+            "type": "file",
+            "size": 5,
+            "encoding": "base64",
+            "content": base64.b64encode(b"hello").decode(),
+        }
+
+    monkeypatch.setattr(github_client, "_get", fake_get)
+
+    content = asyncio.run(
+        github_client.get_text_file(
+            "example", "project", "docs/guide.md", ref="feature/docs"
+        )
+    )
+
+    assert content == "hello"
+
+
+def test_get_text_file_rejects_non_file_payload(monkeypatch):
+    async def fake_get(path: str):
+        return [{"type": "file"}]
+
+    monkeypatch.setattr(github_client, "_get", fake_get)
+
+    with pytest.raises(github_client.GitHubRepositoryError, match="return a file"):
+        asyncio.run(
+            github_client.get_text_file("example", "project", "docs", ref="main")
+        )

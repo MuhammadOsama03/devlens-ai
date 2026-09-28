@@ -1,3 +1,4 @@
+import base64
 from typing import Any
 from urllib.parse import quote, urlencode
 
@@ -104,3 +105,29 @@ async def get_recent_commits(
     if not isinstance(result, list):
         raise GitHubRepositoryError("GitHub returned an invalid commit list")
     return result
+
+
+async def get_text_file(
+    owner: str,
+    repo: str,
+    path: str,
+    *,
+    ref: str,
+) -> str:
+    encoded_path = quote(path.strip("/"), safe="/")
+    if not encoded_path:
+        raise ValueError("path cannot be empty")
+    query = urlencode({"ref": ref})
+    result = await _get(f"repos/{owner}/{repo}/contents/{encoded_path}?{query}")
+    if not isinstance(result, dict) or result.get("type") != "file":
+        raise GitHubRepositoryError("GitHub did not return a file")
+    if int(result.get("size", 0)) > settings.max_context_file_bytes:
+        raise GitHubRepositoryError("Repository file exceeds the context size limit")
+    if result.get("encoding") != "base64" or not isinstance(result.get("content"), str):
+        raise GitHubRepositoryError("Repository file content is unavailable")
+    try:
+        encoded_content = "".join(result["content"].split())
+        decoded = base64.b64decode(encoded_content, validate=True)
+        return decoded.decode("utf-8")
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise GitHubRepositoryError("Repository file is not valid UTF-8 text") from exc

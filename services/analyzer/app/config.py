@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     rate_limit_requests: int = Field(default=60, gt=0)
     rate_limit_window_seconds: float = Field(default=60.0, gt=0)
     cors_origins: str = "http://localhost:3000"
+    max_context_file_bytes: int = Field(default=100_000, gt=0, le=1_000_000)
 
     @property
     def allowed_origins(self) -> list[str]:
