@@ -31,6 +31,7 @@ from .models import (
 )
 from .request_id import resolve_request_id
 from .config import settings
+from .dependencies import enforce_rate_limit
 
 
 app = FastAPI(
@@ -98,6 +99,7 @@ def auth_check(api_key: str = Depends(require_api_key)) -> dict[str, bool]:
 @app.get(
     "/repositories/{owner}/{repo}/summary",
     response_model=RepositorySummary,
+    dependencies=[Depends(enforce_rate_limit)],
 )
 async def repository_summary(owner: RepoSegment, repo: RepoSegment) -> dict:
     repository, languages = await asyncio.gather(
@@ -111,6 +113,7 @@ async def repository_summary(owner: RepoSegment, repo: RepoSegment) -> dict:
 @app.get(
     "/repositories/{owner}/{repo}/structure",
     response_model=StructureAnalysis,
+    dependencies=[Depends(enforce_rate_limit)],
 )
 async def repository_structure(owner: RepoSegment, repo: RepoSegment) -> dict:
     entries = await get_root_contents(owner, repo)
@@ -121,6 +124,7 @@ async def repository_structure(owner: RepoSegment, repo: RepoSegment) -> dict:
 @app.get(
     "/repositories/{owner}/{repo}/deep-structure",
     response_model=DeepStructureAnalysis,
+    dependencies=[Depends(enforce_rate_limit)],
 )
 async def repository_deep_structure(
     owner: RepoSegment,
@@ -144,6 +148,7 @@ async def repository_deep_structure(
 @app.get(
     "/repositories/{owner}/{repo}/activity",
     response_model=CommitActivity,
+    dependencies=[Depends(enforce_rate_limit)],
 )
 async def repository_activity(
     owner: RepoSegment,
@@ -164,6 +169,7 @@ async def repository_activity(
 @app.get(
     "/repositories/{owner}/{repo}/overview",
     response_model=RepositoryOverview,
+    dependencies=[Depends(enforce_rate_limit)],
 )
 async def repository_overview(owner: RepoSegment, repo: RepoSegment) -> dict:
     repository, languages, entries = await asyncio.gather(
