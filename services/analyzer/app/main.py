@@ -1,7 +1,7 @@
 import asyncio
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Path, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Path, Query, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -24,10 +24,12 @@ from .github_client import (
 from .models import (
     CommitActivity,
     AuthCheckResponse,
+    DeleteAnalysisResponse,
     DeepStructureAnalysis,
     HealthResponse,
     RepositoryOverview,
     RepositorySummary,
+    SavedAnalysisIndex,
     StructureAnalysis,
 )
 from .request_id import resolve_request_id
@@ -96,6 +98,38 @@ def health() -> dict[str, str]:
 @app.get("/auth/check", response_model=AuthCheckResponse)
 def auth_check(api_key: str = Depends(require_api_key)) -> dict[str, bool]:
     return {"authenticated": bool(api_key)}
+
+
+@app.get("/analyses", response_model=SavedAnalysisIndex)
+def saved_analyses(
+    limit: int = Query(default=100, ge=1, le=500),
+    runtime: RuntimeServices = Depends(get_runtime),
+    api_key: str = Depends(require_api_key),
+) -> dict[str, list[str]]:
+    return {"repositories": runtime.store.list_repositories(limit)}
+
+
+@app.get("/analyses/{owner}/{repo}", response_model=RepositoryOverview)
+def saved_analysis(
+    owner: RepoSegment,
+    repo: RepoSegment,
+    runtime: RuntimeServices = Depends(get_runtime),
+    api_key: str = Depends(require_api_key),
+) -> dict:
+    result = runtime.store.get(f"{owner}/{repo}")
+    if result is None:
+        raise HTTPException(status_code=404, detail="Saved analysis not found")
+    return result
+
+
+@app.delete("/analyses/{owner}/{repo}", response_model=DeleteAnalysisResponse)
+def delete_saved_analysis(
+    owner: RepoSegment,
+    repo: RepoSegment,
+    runtime: RuntimeServices = Depends(get_runtime),
+    api_key: str = Depends(require_api_key),
+) -> dict[str, bool]:
+    return {"deleted": runtime.store.delete(f"{owner}/{repo}")}
 
 
 @app.get(

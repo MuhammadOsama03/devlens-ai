@@ -11,6 +11,14 @@ class AuthCheckResponse(BaseModel):
     authenticated: bool
 
 
+class SavedAnalysisIndex(BaseModel):
+    repositories: list[str]
+
+
+class DeleteAnalysisResponse(BaseModel):
+    deleted: bool
+
+
 class RepositorySummary(BaseModel):
     full_name: str | None = None
     description: str | None = None
