@@ -13,6 +13,7 @@ from .analysis import (
 )
 from .auth import require_api_key
 from .cache_keys import analysis_cache_key
+from .context import select_context_paths
 from .github_client import (
     GitHubRepositoryError,
     get_languages,
@@ -20,6 +21,7 @@ from .github_client import (
     get_repository_paths,
     get_recent_commits,
     get_root_contents,
+    get_text_file,
 )
 from .models import (
     CommitActivity,
@@ -28,11 +30,14 @@ from .models import (
     DeepStructureAnalysis,
     HealthResponse,
     RepositoryOverview,
+    QuestionContextRequest,
+    QuestionContextResponse,
     RepositorySummary,
     SavedAnalysisIndex,
     StructureAnalysis,
 )
 from .request_id import resolve_request_id
+from .qa import ContextFile, build_context_chunks, build_grounded_prompt, prepare_repository_question
 from .config import settings
 from .dependencies import enforce_rate_limit, get_runtime
 from .runtime import RuntimeServices
@@ -130,6 +135,50 @@ def delete_saved_analysis(
     api_key: str = Depends(require_api_key),
 ) -> dict[str, bool]:
     return {"deleted": runtime.store.delete(f"{owner}/{repo}")}
+
+
+@app.post(
+    "/repositories/{owner}/{repo}/qa/context",
+    response_model=QuestionContextResponse,
+    dependencies=[Depends(enforce_rate_limit)],
+)
+async def repository_question_context(
+    owner: RepoSegment,
+    repo: RepoSegment,
+    payload: QuestionContextRequest,
+    api_key: str = Depends(require_api_key),
+) -> dict:
+    resolved_ref = payload.ref
+    if resolved_ref is None:
+        repository = await get_repository(owner, repo)
+        resolved_ref = repository.get("default_branch") or "main"
+
+    repository_paths, tree_truncated = await get_repository_paths(
+        owner, repo, resolved_ref
+    )
+    selected_paths = select_context_paths(repository_paths, limit=payload.max_files)
+    contents = await asyncio.gather(
+        *(
+            get_text_file(owner, repo, path, ref=resolved_ref)
+            for path in selected_paths
+        )
+    )
+    chunks = build_context_chunks(
+        [
+            ContextFile(path=path, content=content)
+            for path, content in zip(selected_paths, contents, strict=True)
+        ]
+    )
+    question = prepare_repository_question(
+        f"{owner}/{repo}", payload.question, chunks
+    )
+    return {
+        "repository": question.repository,
+        "ref": resolved_ref,
+        "paths": selected_paths,
+        "prompt": build_grounded_prompt(question),
+        "tree_truncated": tree_truncated,
+    }
 
 
 @app.get(

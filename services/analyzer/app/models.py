@@ -19,6 +19,20 @@ class DeleteAnalysisResponse(BaseModel):
     deleted: bool
 
 
+class QuestionContextRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=1000)
+    ref: str | None = Field(default=None, min_length=1, max_length=255)
+    max_files: int = Field(default=8, ge=1, le=20)
+
+
+class QuestionContextResponse(BaseModel):
+    repository: str
+    ref: str
+    paths: list[str]
+    prompt: str
+    tree_truncated: bool
+
+
 class RepositorySummary(BaseModel):
     full_name: str | None = None
     description: str | None = None
