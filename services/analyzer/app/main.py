@@ -12,6 +12,7 @@ from .analysis import (
     summarize_commit_activity,
 )
 from .auth import require_api_key
+from .cache_keys import analysis_cache_key
 from .github_client import (
     GitHubRepositoryError,
     get_languages,
@@ -31,7 +32,8 @@ from .models import (
 )
 from .request_id import resolve_request_id
 from .config import settings
-from .dependencies import enforce_rate_limit
+from .dependencies import enforce_rate_limit, get_runtime
+from .runtime import RuntimeServices
 
 
 app = FastAPI(
@@ -171,7 +173,16 @@ async def repository_activity(
     response_model=RepositoryOverview,
     dependencies=[Depends(enforce_rate_limit)],
 )
-async def repository_overview(owner: RepoSegment, repo: RepoSegment) -> dict:
+async def repository_overview(
+    owner: RepoSegment,
+    repo: RepoSegment,
+    runtime: RuntimeServices = Depends(get_runtime),
+) -> dict:
+    cache_key = analysis_cache_key(owner, repo, "overview")
+    cached = runtime.cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     repository, languages, entries = await asyncio.gather(
         get_repository(owner, repo),
         get_languages(owner, repo),
@@ -180,12 +191,14 @@ async def repository_overview(owner: RepoSegment, repo: RepoSegment) -> dict:
 
     root_analysis = analyze_root(entries)
     structure = {"repository": f"{owner}/{repo}", **root_analysis}
-    return {
+    result = {
         "repository": f"{owner}/{repo}",
         "summary": _build_summary(repository, languages),
         "structure": structure,
         "engineering_health": calculate_health(root_analysis["quality_signals"]),
     }
+    runtime.cache.set(cache_key, result)
+    return result
 
 
 def _build_summary(repository: dict, languages: dict[str, int]) -> dict:
