@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import FastAPI, Path, Query, Request
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 from .analysis import (
     analyze_paths,
@@ -27,12 +28,20 @@ from .models import (
     StructureAnalysis,
 )
 from .request_id import resolve_request_id
+from .config import settings
 
 
 app = FastAPI(
     title="DevLens Analyzer API",
     version="0.5.0",
     description="Repository intelligence service for DevLens AI.",
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.allowed_origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
 )
 
 

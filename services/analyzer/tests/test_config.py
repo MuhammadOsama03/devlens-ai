@@ -14,3 +14,9 @@ def test_runtime_settings_accept_explicit_overrides():
 def test_runtime_settings_reject_non_positive_limits():
     with pytest.raises(ValidationError):
         Settings(rate_limit_requests=0)
+
+
+def test_allowed_origins_are_trimmed_and_empty_values_removed():
+    settings = Settings(cors_origins="https://app.example, ,http://localhost:3000")
+
+    assert settings.allowed_origins == ["https://app.example", "http://localhost:3000"]
