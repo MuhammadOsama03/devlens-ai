@@ -4,10 +4,23 @@ from urllib.parse import quote, urlencode
 import httpx
 
 from .config import settings
+from .errors import PublicError, map_upstream_status
 
 
 class GitHubRepositoryError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, status_code: int | None = None):
+        super().__init__(message)
+        self.status_code = status_code
+
+    @property
+    def public_error(self) -> PublicError:
+        if self.status_code is None:
+            return PublicError(
+                "github_unavailable",
+                "GitHub is temporarily unavailable.",
+                True,
+            )
+        return map_upstream_status(self.status_code)
 
 
 def _headers() -> dict[str, str]:
@@ -30,10 +43,14 @@ async def _get(path: str) -> Any:
         raise GitHubRepositoryError("GitHub API request failed") from exc
 
     if response.status_code == 404:
-        raise GitHubRepositoryError("Repository not found or not accessible")
+        raise GitHubRepositoryError(
+            "Repository not found or not accessible",
+            status_code=response.status_code,
+        )
     if response.status_code >= 400:
         raise GitHubRepositoryError(
-            f"GitHub API returned {response.status_code}: {response.reason_phrase}"
+            f"GitHub API returned {response.status_code}: {response.reason_phrase}",
+            status_code=response.status_code,
         )
     return response.json()
 

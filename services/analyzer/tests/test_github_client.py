@@ -62,3 +62,17 @@ def test_get_recent_commits_rejects_invalid_payload(monkeypatch):
         match="invalid commit list",
     ):
         asyncio.run(github_client.get_recent_commits("example", "project"))
+
+
+def test_repository_error_exposes_safe_public_details():
+    error = github_client.GitHubRepositoryError("token rejected", status_code=403)
+
+    assert error.public_error.code == "github_access_denied"
+    assert error.public_error.retryable is False
+
+
+def test_transport_error_is_retryable_without_leaking_details():
+    error = github_client.GitHubRepositoryError("socket included a secret")
+
+    assert error.public_error.code == "github_unavailable"
+    assert "secret" not in error.public_error.message
