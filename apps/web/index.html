@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DevLens AI</title>\n  <meta name="theme-color" content="#07111f">\n  <link rel="manifest" href="/manifest.webmanifest">
+  <title>DevLens AI</title>
+  <meta name="theme-color" content="#07111f">
+  <link rel="manifest" href="/manifest.webmanifest">
   <style>
     :root{color-scheme:dark;font-family:Inter,system-ui,sans-serif;background:#07111f;color:#e6edf7}
     *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at top,#17305a,#07111f 55%)}
@@ -17,7 +19,8 @@
   </style>
 </head>
 <body>
-<a href="#content" style="position:absolute;left:-9999px">Skip to content</a>\n<main id="content">
+<a href="#content" style="position:absolute;left:-9999px">Skip to content</a>
+<main id="content">
   <div class="eyebrow">REPOSITORY INTELLIGENCE</div>
   <h1>See the health behind the code.</h1>
   <p class="lead">Enter a public GitHub repository to inspect its stack, structure, and engineering-health signals.</p>
@@ -29,19 +32,43 @@
 </main>
 <script>
 const form=document.querySelector("#analyze"),result=document.querySelector("#result");
+const element=(tag,text,className)=>{
+  const node=document.createElement(tag);
+  node.textContent=String(text);
+  if(className)node.className=className;
+  return node;
+};
+const metric=(value,label)=>{
+  const card=element("div","","metric");
+  card.append(element("strong",value),document.createElement("br"),document.createTextNode(label));
+  return card;
+};
+const renderOverview=(data)=>{
+  const summary=data.summary,health=data.engineering_health;
+  const grid=element("div","","grid");
+  grid.append(
+    metric(`${health.score}/100`,"Health score"),
+    metric(summary.stars,"Stars"),
+    metric(data.structure.file_count,"Root files"),
+    metric(Object.keys(summary.languages).join(", ")||"Unknown","Languages")
+  );
+  result.replaceChildren(
+    element("h2",summary.full_name||data.repository),
+    element("p",summary.description||"No description provided."),
+    grid
+  );
+};
 form.addEventListener("submit",async(event)=>{
   event.preventDefault(); const repo=document.querySelector("#repository").value.trim();
   result.textContent="Analyzing…";
   try{
     const response=await fetch(`${window.DEVLENS_API_URL||"http://localhost:8000"}/repositories/${encodeURI(repo)}/overview`);
     if(!response.ok)throw new Error(`Request failed (${response.status})`);
-    const data=await response.json(),summary=data.summary,health=data.engineering_health;
-    result.innerHTML=`<h2>${summary.full_name}</h2><p>${summary.description||"No description provided."}</p>
-      <div class="grid"><div class="metric"><strong>${health.score}/100</strong><br>Health score</div>
-      <div class="metric"><strong>${summary.stars}</strong><br>Stars</div>
-      <div class="metric"><strong>${data.structure.file_count}</strong><br>Root files</div>
-      <div class="metric"><strong>${Object.keys(summary.languages).join(", ")||"Unknown"}</strong><br>Languages</div></div>`;
-  }catch(error){result.innerHTML=`<p class="error">${error.message}. Confirm the API is running and CORS is configured.</p>`;}
+    renderOverview(await response.json());
+  }catch(error){
+    const message=error instanceof Error?error.message:"Unexpected error";
+    result.replaceChildren(element("p",`${message}. Confirm the API is running and CORS is configured.`,"error"));
+  }
 });
 </script>
 </body>

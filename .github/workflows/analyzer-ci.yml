@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - "services/analyzer/**"
+      - "apps/web/**"
       - ".github/workflows/analyzer-ci.yml"
   pull_request:
     paths:
       - "services/analyzer/**"
+      - "apps/web/**"
       - ".github/workflows/analyzer-ci.yml"
 
 permissions:
@@ -44,3 +46,6 @@ jobs:
 
       - name: Run tests
         run: python -m pytest --quiet
+
+      - name: Validate web interface
+        run: python ../../apps/web/check.py
