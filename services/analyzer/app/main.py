@@ -198,6 +198,7 @@ async def repository_overview(
         "engineering_health": calculate_health(root_analysis["quality_signals"]),
     }
     runtime.cache.set(cache_key, result)
+    runtime.store.save(f"{owner}/{repo}", result)
     return result
 
 

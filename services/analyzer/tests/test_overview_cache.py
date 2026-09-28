@@ -40,5 +40,6 @@ def test_overview_reuses_cached_analysis(monkeypatch, tmp_path):
         assert first.json() == second.json()
         assert calls == 1
         assert runtime.cache.stats()["entries"] == 1
+        assert runtime.store.get("example/project") == first.json()
     finally:
         main_module.app.dependency_overrides.clear()
