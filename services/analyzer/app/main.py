@@ -1,7 +1,7 @@
 import asyncio
 from typing import Annotated
 
-from fastapi import FastAPI, Path, Query, Request
+from fastapi import Depends, FastAPI, Path, Query, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -11,6 +11,7 @@ from .analysis import (
     calculate_health,
     summarize_commit_activity,
 )
+from .auth import require_api_key
 from .github_client import (
     GitHubRepositoryError,
     get_languages,
@@ -21,6 +22,7 @@ from .github_client import (
 )
 from .models import (
     CommitActivity,
+    AuthCheckResponse,
     DeepStructureAnalysis,
     HealthResponse,
     RepositoryOverview,
@@ -86,6 +88,11 @@ RepoSegment = Annotated[
 @app.get("/health", response_model=HealthResponse)
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "devlens-analyzer", "version": app.version}
+
+
+@app.get("/auth/check", response_model=AuthCheckResponse)
+def auth_check(api_key: str = Depends(require_api_key)) -> dict[str, bool]:
+    return {"authenticated": bool(api_key)}
 
 
 @app.get(

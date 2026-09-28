@@ -7,6 +7,10 @@ class HealthResponse(BaseModel):
     version: str
 
 
+class AuthCheckResponse(BaseModel):
+    authenticated: bool
+
+
 class RepositorySummary(BaseModel):
     full_name: str | None = None
     description: str | None = None

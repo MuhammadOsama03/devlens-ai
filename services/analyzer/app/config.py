@@ -4,6 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     github_token: str | None = None
+    api_key_hash: str | None = None
     github_api_url: str = "https://api.github.com"
     request_timeout_seconds: float = Field(default=10.0, gt=0)
     cache_ttl_seconds: float = Field(default=300.0, gt=0)
