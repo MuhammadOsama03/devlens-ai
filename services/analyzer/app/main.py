@@ -45,6 +45,7 @@ from .readiness import assess_readiness
 from .contributors import summarize_contributors
 from .trends import summarize_daily_commits
 from .risk import assess_delivery_risk
+from .badges import build_health_badge
 
 
 app = FastAPI(
@@ -324,6 +325,17 @@ async def repository_risk(
 ) -> dict:
     overview = await repository_overview(owner, repo, runtime)
     return {"repository": f"{owner}/{repo}", **assess_delivery_risk(overview)}
+
+
+@app.get("/repositories/{owner}/{repo}/badge")
+async def repository_health_badge(
+    owner: RepoSegment, repo: RepoSegment,
+    runtime: RuntimeServices = Depends(get_runtime),
+) -> dict:
+    overview = await repository_overview(owner, repo, runtime)
+    health = overview["engineering_health"]
+    return {"repository": f"{owner}/{repo}",
+            **build_health_badge(health["score"], health["grade"])}
 
 
 def _build_summary(repository: dict, languages: dict[str, int]) -> dict:
