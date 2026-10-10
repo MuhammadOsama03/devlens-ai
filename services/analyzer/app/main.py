@@ -41,6 +41,7 @@ from .qa import ContextFile, build_context_chunks, build_grounded_prompt, prepar
 from .config import settings
 from .dependencies import enforce_rate_limit, get_runtime
 from .runtime import RuntimeServices
+from .readiness import assess_readiness
 
 
 app = FastAPI(
@@ -98,6 +99,12 @@ RepoSegment = Annotated[
 @app.get("/health", response_model=HealthResponse)
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "devlens-analyzer", "version": app.version}
+
+
+@app.get("/ready")
+def readiness(runtime: RuntimeServices = Depends(get_runtime)) -> JSONResponse:
+    result = assess_readiness(runtime.store.database_path, runtime.cache.stats())
+    return JSONResponse(status_code=200 if result["ready"] else 503, content=result)
 
 
 @app.get("/auth/check", response_model=AuthCheckResponse)
