@@ -44,6 +44,7 @@ from .runtime import RuntimeServices
 from .readiness import assess_readiness
 from .contributors import summarize_contributors
 from .trends import summarize_daily_commits
+from .risk import assess_delivery_risk
 
 
 app = FastAPI(
@@ -314,6 +315,15 @@ async def repository_overview(
     runtime.cache.set(cache_key, result)
     runtime.store.save(f"{owner}/{repo}", result)
     return result
+
+
+@app.get("/repositories/{owner}/{repo}/risk")
+async def repository_risk(
+    owner: RepoSegment, repo: RepoSegment,
+    runtime: RuntimeServices = Depends(get_runtime),
+) -> dict:
+    overview = await repository_overview(owner, repo, runtime)
+    return {"repository": f"{owner}/{repo}", **assess_delivery_risk(overview)}
 
 
 def _build_summary(repository: dict, languages: dict[str, int]) -> dict:
