@@ -52,7 +52,7 @@ from .webhooks import verify_github_signature
 
 app = FastAPI(
     title="DevLens Analyzer API",
-    version="0.5.0",
+    version="0.6.0",
     description="Repository intelligence service for DevLens AI.",
 )
 app.add_middleware(

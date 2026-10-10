@@ -11,6 +11,8 @@ AI-powered GitHub repository intelligence for codebase analysis, engineering hea
 - API-key primitives, bearer parsing, security headers, rate limiting, and audit events
 - Bounded in-memory caching and SQLite analysis persistence
 - Shareable Markdown report generation
+- Contributor summaries, daily activity trends, delivery risk, and health badges
+- Readiness probes, server timing, and signed GitHub webhook cache invalidation
 - Docker Compose deployment and automated GitHub Actions checks
 
 ## Run locally

@@ -13,8 +13,15 @@ def test_health_endpoint():
     assert response.json() == {
         "status": "ok",
         "service": "devlens-analyzer",
-        "version": "0.5.0",
+        "version": "0.6.0",
     }
+    assert response.headers["server-timing"].startswith("app;dur=")
+
+
+def test_readiness_endpoint():
+    response = client.get("/ready")
+    assert response.status_code == 200
+    assert response.json()["ready"] is True
 
 
 def test_repository_overview(monkeypatch):
@@ -140,6 +147,17 @@ def test_repository_activity_limit_validation():
     )
 
     assert response.status_code == 422
+
+
+def test_contributors_and_trends_endpoints(monkeypatch):
+    async def fake_commits(owner, repo, *, ref, limit):
+        return [{"author": {"login": "alice"},
+                 "commit": {"author": {"date": "2026-10-10T12:00:00Z"}}}]
+    monkeypatch.setattr(main_module, "get_recent_commits", fake_commits)
+    contributors = client.get("/repositories/example/project/contributors")
+    trends = client.get("/repositories/example/project/trends")
+    assert contributors.json()["contributors"] == [{"author": "alice", "commits": 1}]
+    assert trends.json()["daily_commits"] == [{"date": "2026-10-10", "commits": 1}]
 
 
 def test_github_errors_have_stable_public_shape(monkeypatch):
