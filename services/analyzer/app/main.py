@@ -1,7 +1,7 @@
 import asyncio
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, Path, Query, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -47,6 +47,7 @@ from .trends import summarize_daily_commits
 from .risk import assess_delivery_risk
 from .badges import build_health_badge
 from .timing import measure
+from .webhooks import verify_github_signature
 
 
 app = FastAPI(
@@ -117,6 +118,24 @@ def readiness(runtime: RuntimeServices = Depends(get_runtime)) -> JSONResponse:
 @app.get("/auth/check", response_model=AuthCheckResponse)
 def auth_check(api_key: str = Depends(require_api_key)) -> dict[str, bool]:
     return {"authenticated": bool(api_key)}
+
+
+@app.post("/webhooks/github", status_code=202)
+async def github_webhook(
+    request: Request,
+    x_hub_signature_256: str | None = Header(default=None),
+    x_github_event: str | None = Header(default=None),
+    runtime: RuntimeServices = Depends(get_runtime),
+) -> dict:
+    if not settings.github_webhook_secret:
+        raise HTTPException(status_code=503, detail="GitHub webhooks are not configured")
+    payload = await request.body()
+    if not verify_github_signature(payload, x_hub_signature_256,
+                                   settings.github_webhook_secret):
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+    if x_github_event == "push":
+        runtime.cache.clear()
+    return {"accepted": True, "event": x_github_event or "unknown"}
 
 
 @app.get("/analyses", response_model=SavedAnalysisIndex)
