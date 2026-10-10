@@ -46,6 +46,7 @@ from .contributors import summarize_contributors
 from .trends import summarize_daily_commits
 from .risk import assess_delivery_risk
 from .badges import build_health_badge
+from .timing import measure
 
 
 app = FastAPI(
@@ -85,13 +86,15 @@ async def github_error_handler(
 async def add_security_headers(request, call_next):
     request_id = resolve_request_id(request.headers.get("X-Request-ID"))
     request.state.request_id = request_id
-    response = await call_next(request)
+    with measure("request") as timing:
+        response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["Cache-Control"] = "no-store"
+    response.headers["Server-Timing"] = f"app;dur={timing.duration_ms:.3f}"
     return response
 
 RepoSegment = Annotated[
