@@ -42,6 +42,7 @@ from .config import settings
 from .dependencies import enforce_rate_limit, get_runtime
 from .runtime import RuntimeServices
 from .readiness import assess_readiness
+from .contributors import summarize_contributors
 
 
 app = FastAPI(
@@ -256,6 +257,17 @@ async def repository_activity(
         "requested_limit": limit,
         **summarize_commit_activity(commits),
     }
+
+
+@app.get("/repositories/{owner}/{repo}/contributors")
+async def repository_contributors(
+    owner: RepoSegment, repo: RepoSegment,
+    ref: str | None = Query(default=None, min_length=1, max_length=255),
+    limit: int = Query(default=10, ge=1, le=50),
+) -> dict:
+    commits = await get_recent_commits(owner, repo, ref=ref, limit=100)
+    return {"repository": f"{owner}/{repo}", "ref": ref,
+            "contributors": summarize_contributors(commits, limit)}
 
 
 @app.get(
