@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
     max_context_file_bytes: int = Field(default=100_000, gt=0, le=1_000_000)
     github_webhook_secret: str | None = None
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-2.5-flash"
 
     @property
     def allowed_origins(self) -> list[str]:
