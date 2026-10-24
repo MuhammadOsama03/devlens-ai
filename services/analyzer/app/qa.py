@@ -44,11 +44,16 @@ def prepare_repository_question(
         raise ValueError("question is too long")
 
     safe_chunks = []
+    separator = "\n\n--- repository context ---\n\n"
     remaining = MAX_CONTEXT_LENGTH
     for chunk in context_chunks:
         normalized = chunk.replace("\x00", "").strip()
         if not normalized:
             continue
+        if safe_chunks:
+            remaining -= len(separator)
+        if remaining <= 0:
+            break
         safe_chunks.append(normalized[:remaining])
         remaining -= len(safe_chunks[-1])
         if remaining <= 0:
@@ -57,7 +62,7 @@ def prepare_repository_question(
     return RepositoryQuestion(
         repository=repository,
         question=clean_question,
-        context="\n\n--- repository context ---\n\n".join(safe_chunks),
+        context=separator.join(safe_chunks),
     )
 
 
