@@ -33,6 +33,14 @@ class QuestionContextResponse(BaseModel):
     tree_truncated: bool
 
 
+class QuestionAnswerResponse(BaseModel):
+    repository: str
+    ref: str
+    answer: str
+    paths: list[str]
+    tree_truncated: bool
+
+
 class RepositorySummary(BaseModel):
     full_name: str | None = None
     description: str | None = None
