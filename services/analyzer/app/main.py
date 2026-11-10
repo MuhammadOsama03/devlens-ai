@@ -32,6 +32,7 @@ from .models import (
     RepositoryOverview,
     QuestionContextRequest,
     QuestionContextResponse,
+    QuestionAnswerResponse,
     RepositorySummary,
     SavedAnalysisIndex,
     StructureAnalysis,
@@ -48,6 +49,7 @@ from .risk import assess_delivery_risk
 from .badges import build_health_badge
 from .timing import measure
 from .webhooks import verify_github_signature
+from .llm import generate_grounded_answer, ProviderUnavailable
 
 
 app = FastAPI(
@@ -211,6 +213,34 @@ async def repository_question_context(
         "paths": selected_paths,
         "prompt": build_grounded_prompt(question),
         "tree_truncated": tree_truncated,
+    }
+
+
+@app.post(
+    "/repositories/{owner}/{repo}/qa/answer",
+    response_model=QuestionAnswerResponse,
+    dependencies=[Depends(enforce_rate_limit)],
+)
+async def repository_question_answer(
+    owner: RepoSegment,
+    repo: RepoSegment,
+    payload: QuestionContextRequest,
+    api_key: str = Depends(require_api_key),
+) -> dict:
+    """Generate a grounded answer using the same bounded, redacted context as QA preparation."""
+    if not settings.gemini_api_key:
+        raise HTTPException(status_code=503, detail="Gemini provider is not configured")
+    prepared = await repository_question_context(owner, repo, payload, api_key)
+    try:
+        answer = await generate_grounded_answer(prepared["prompt"])
+    except ProviderUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return {
+        "repository": prepared["repository"],
+        "ref": prepared["ref"],
+        "answer": answer,
+        "paths": prepared["paths"],
+        "tree_truncated": prepared["tree_truncated"],
     }
 
 

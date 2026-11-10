@@ -56,3 +56,19 @@ The web interface is available on port 3000 and the analyzer on port 8000.
 2. Add an external AI provider behind the grounded Q&A boundary
 3. Replace local SQLite and cache implementations with managed production services
 4. Deploy behind TLS and enable branch protection with required CI checks
+
+## Optional grounded Gemini answers
+
+The existing `POST /repositories/{owner}/{repo}/qa/context` endpoint returns a bounded, redacted prompt without invoking a model.
+
+To enable answer generation, set `GEMINI_API_KEY` in the analyzer environment and optionally `GEMINI_MODEL` (default: `gemini-2.5-flash`). Then call:
+
+```bash
+curl -X POST http://localhost:8000/repositories/OWNER/REPO/qa/answer \
+  -H "Content-Type: application/json" \
+  -d '{"question":"Where is authentication implemented?","max_files":8}'
+```
+
+If API-key authentication is configured, include the corresponding bearer authorization header. The endpoint uses the same context selection, secret redaction, and bounded prompt as the context endpoint. It returns the model answer plus source file paths; answers still require human verification. Without a Gemini key, it returns HTTP 503 rather than silently generating an ungrounded response. Avoid sending private code to an external provider unless authorized.
+
+Run tests from `services/analyzer` with `python -m pytest`.

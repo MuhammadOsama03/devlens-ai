@@ -45,3 +45,20 @@ def test_context_chunks_label_files_and_redact_secrets():
 
 def test_context_chunks_skip_empty_files():
     assert build_context_chunks([ContextFile(path="empty.txt", content="  ")]) == []
+
+
+def test_context_budget_includes_separator_overhead():
+    request = prepare_repository_question(
+        "example/project",
+        "Where is the configuration?",
+        ["a" * (MAX_CONTEXT_LENGTH - 10), "b" * 100],
+    )
+    assert len(request.context) <= MAX_CONTEXT_LENGTH
+    assert request.context.startswith("a")
+
+
+def test_context_budget_with_many_small_chunks():
+    request = prepare_repository_question(
+        "example/project", "Summarize", ["sample"] * 1000
+    )
+    assert len(request.context) <= MAX_CONTEXT_LENGTH
